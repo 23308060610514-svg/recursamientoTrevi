@@ -48,8 +48,8 @@ class AuthController:
         """Envía correo real de recuperación"""
         try:
             
-            EMAIL_USER = "ruelas.pato.2009@gmail.com"
-            EMAIL_PASSWORD = "ipri qprz rqbv zbeo"
+            EMAIL_USER = "delrioerik@gmail.com"
+            EMAIL_PASSWORD = "i2314173101ermi"
 
             mensaje = MIMEMultipart("alternative")
             mensaje["Subject"] = "REmenus - Recuperación de Contraseña"

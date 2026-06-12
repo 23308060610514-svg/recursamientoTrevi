@@ -8,6 +8,7 @@ dependencies = [
     "bcrypt>=5.0.0",
     "email-validator>=2.3.0",
     "flet>=0.85.3",
+    "mysql-connector>=2.2.9",
     "mysql-connector-python>=9.7.0",
     "pydantic>=2.13.4",
 ]

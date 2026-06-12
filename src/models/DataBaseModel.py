@@ -7,7 +7,7 @@ class Database:
             'host': 'localhost',
             'user': 'root',
             'password': '',
-            'database': 'tareas',
+            'database': 'tablas',
             'port': 3306
         }
     

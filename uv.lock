@@ -197,6 +197,12 @@ wheels = [
 ]
 
 [[package]]
+name = "mysql-connector"
+version = "2.2.9"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/28/04/e40098f3730e75bbe36a338926f566ea803550a34fb50535499f4fc4787a/mysql-connector-2.2.9.tar.gz", hash = "sha256:1733e6ce52a049243de3264f1fbc22a852cb35458c4ad739ba88189285efdf32", size = 11852649, upload-time = "2019-04-01T14:40:08.091Z" }
+
+[[package]]
 name = "mysql-connector-python"
 version = "9.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -283,6 +289,7 @@ dependencies = [
     { name = "bcrypt" },
     { name = "email-validator" },
     { name = "flet" },
+    { name = "mysql-connector" },
     { name = "mysql-connector-python" },
     { name = "pydantic" },
 ]
@@ -292,6 +299,7 @@ requires-dist = [
     { name = "bcrypt", specifier = ">=5.0.0" },
     { name = "email-validator", specifier = ">=2.3.0" },
     { name = "flet", specifier = ">=0.85.3" },
+    { name = "mysql-connector", specifier = ">=2.2.9" },
     { name = "mysql-connector-python", specifier = ">=9.7.0" },
     { name = "pydantic", specifier = ">=2.13.4" },
 ]

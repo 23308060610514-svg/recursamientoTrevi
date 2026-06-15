@@ -16,5 +16,5 @@ class Database:
             connection = mysql.connector.connect(**self.config)
             return connection
         except Error as e:
-            print(f"Error al conectar a MySQL: {e}")
+            print(f"Error: {e}")
             return None

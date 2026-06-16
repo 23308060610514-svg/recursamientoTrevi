@@ -1,17 +1,23 @@
 import flet as ft
 from models.AlumnosModel import AlumnosModel
+from models.ComentariosModel import ComentariosModel
 
 class CalificacionesView:
     def __init__(self, page, controller):
         self.page = page
         self.controller = controller
         self.alumno_model = AlumnosModel()
+        self.comentario_model = ComentariosModel()
         self.data_table = None
         self.dialog = None
         self.alumno_actual = None
         self.alumno_nombre = None
+        self.dialog_comentarios = None
 
     def build(self):
+        user = getattr(self.page, "user_data", None)
+        es_profesor = user.get("tipo") == "profesor" if user else False
+        
         alumnos = self.alumno_model.obtener_todos()
         
         alumnos_list = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
@@ -32,15 +38,18 @@ class CalificacionesView:
         
         self.txt_alumno_seleccionado = ft.Text("Ningún alumno seleccionado", size=14, color=ft.Colors.GREY_600)
         
+        # Columnas de la tabla (6 columnas fijas)
+        columnas = [
+            ft.DataColumn(ft.Text("Materia", weight=ft.FontWeight.BOLD)),
+            ft.DataColumn(ft.Text("Unidad 1", weight=ft.FontWeight.BOLD)),
+            ft.DataColumn(ft.Text("Unidad 2", weight=ft.FontWeight.BOLD)),
+            ft.DataColumn(ft.Text("Unidad 3", weight=ft.FontWeight.BOLD)),
+            ft.DataColumn(ft.Text("Promedio", weight=ft.FontWeight.BOLD)),
+            ft.DataColumn(ft.Text("Comentarios", weight=ft.FontWeight.BOLD)),
+        ]
+        
         self.data_table = ft.DataTable(
-            columns=[
-                ft.DataColumn(ft.Text("Materia", weight=ft.FontWeight.BOLD)),
-                ft.DataColumn(ft.Text("Unidad 1", weight=ft.FontWeight.BOLD)),
-                ft.DataColumn(ft.Text("Unidad 2", weight=ft.FontWeight.BOLD)),
-                ft.DataColumn(ft.Text("Unidad 3", weight=ft.FontWeight.BOLD)),
-                ft.DataColumn(ft.Text("Promedio", weight=ft.FontWeight.BOLD)),
-                ft.DataColumn(ft.Text("Acciones", weight=ft.FontWeight.BOLD)),
-            ],
+            columns=columnas,
             rows=[]
         )
         
@@ -50,10 +59,34 @@ class CalificacionesView:
                 self.page.snack_bar.open = True
                 self.page.update()
                 return
+            if not es_profesor:
+                self.page.snack_bar = ft.SnackBar(content=ft.Text("Solo profesores pueden agregar calificaciones"), bgcolor=ft.Colors.RED)
+                self.page.snack_bar.open = True
+                self.page.update()
+                return
             self.mostrar_formulario()
         
         def volver_dashboard(e):
             self.page.go("/dashboard")
+        
+        alumnos_scroll = ft.Container(
+            content=alumnos_list,
+            height=200,
+        )
+        
+        tabla_scroll = ft.Container(
+            content=self.data_table,
+            height=400,
+        )
+        
+        btn_agregar = ft.ElevatedButton(
+            "➕ Agregar Calificación", 
+            on_click=agregar_calificacion, 
+            icon=ft.Icons.GRADE,
+            bgcolor=ft.Colors.GREEN_700,
+            color=ft.Colors.WHITE,
+            visible=es_profesor,
+        )
         
         return ft.View(
             route="/calificaciones",
@@ -72,7 +105,7 @@ class CalificacionesView:
                                 content=ft.Column([
                                     ft.Text("📋 Seleccionar Alumno", size=18, weight=ft.FontWeight.BOLD),
                                     ft.Container(height=10),
-                                    alumnos_list,
+                                    alumnos_scroll,
                                 ]),
                                 padding=20,
                             ),
@@ -88,13 +121,7 @@ class CalificacionesView:
                                     ]),
                                     ft.Divider(),
                                     ft.Row([
-                                        ft.ElevatedButton(
-                                            "➕ Agregar Calificación", 
-                                            on_click=agregar_calificacion, 
-                                            icon=ft.Icons.GRADE,
-                                            bgcolor=ft.Colors.GREEN_700,
-                                            color=ft.Colors.WHITE,
-                                        ),
+                                        btn_agregar,
                                     ], alignment=ft.MainAxisAlignment.END),
                                 ]),
                                 padding=20,
@@ -104,10 +131,16 @@ class CalificacionesView:
                         ft.Container(height=20),
                         ft.Text("📊 Calificaciones por Materia", size=18, weight=ft.FontWeight.BOLD),
                         ft.Container(height=10),
-                        ft.Container(
-                            content=ft.Column([self.data_table])
+                        ft.Card(
+                            content=ft.Container(
+                                content=ft.Column([
+                                    tabla_scroll,
+                                ]),
+                                padding=20,
+                            ),
+                            elevation=3,
                         ),
-                    ]),
+                    ], scroll=ft.ScrollMode.AUTO),
                     padding=20,
                     expand=True,
                 )
@@ -130,6 +163,10 @@ class CalificacionesView:
             self.page.update()
             return
         
+        user = getattr(self.page, "user_data", None)
+        es_profesor = user.get("tipo") == "profesor" if user else False
+        id_usuario = user.get("ID_usuario") if user else None
+        
         calificaciones = self.controller.obtener_por_alumno(self.alumno_actual)
         self.data_table.rows = []
         
@@ -139,22 +176,154 @@ class CalificacionesView:
                 promedio = float(promedio)
             promedio_color = ft.Colors.GREEN if promedio >= 6 else ft.Colors.RED if promedio > 0 else ft.Colors.GREY
             
-            self.data_table.rows.append(
-                ft.DataRow(cells=[
-                    ft.DataCell(ft.Text(cal.get('Materia', ''))),
-                    ft.DataCell(ft.Text(str(cal.get('Unidad1', '-')) if cal.get('Unidad1') is not None else '-')),
-                    ft.DataCell(ft.Text(str(cal.get('Unidad2', '-')) if cal.get('Unidad2') is not None else '-')),
-                    ft.DataCell(ft.Text(str(cal.get('Unidad3', '-')) if cal.get('Unidad3') is not None else '-')),
-                    ft.DataCell(ft.Text(f"{promedio:.1f}" if promedio else "-", color=promedio_color)),
-                    ft.DataCell(ft.Row([
-                        ft.IconButton(ft.Icons.EDIT, icon_color=ft.Colors.BLUE, 
-                                    on_click=lambda e, c=cal: self.mostrar_formulario(c)),
-                    ])),
-                ])
+            # Obtener comentarios de la calificación
+            comentarios = self.comentario_model.obtener_por_calificacion(cal['ID_calificacion'])
+            num_comentarios = len(comentarios)
+            comentario_texto = f"💬 {num_comentarios}" if num_comentarios > 0 else "Sin comentarios"
+            
+            # Crear las celdas base (6 columnas)
+            celdas = [
+                ft.DataCell(ft.Text(cal.get('Materia', ''))),
+                ft.DataCell(ft.Text(str(cal.get('Unidad1', '-')) if cal.get('Unidad1') is not None else '-')),
+                ft.DataCell(ft.Text(str(cal.get('Unidad2', '-')) if cal.get('Unidad2') is not None else '-')),
+                ft.DataCell(ft.Text(str(cal.get('Unidad3', '-')) if cal.get('Unidad3') is not None else '-')),
+                ft.DataCell(ft.Text(f"{promedio:.1f}" if promedio else "-", color=promedio_color)),
+            ]
+            
+            # Sexta columna: Comentarios
+            # Botón de comentarios visible para todos
+            btn_comentarios = ft.IconButton(
+                ft.Icons.COMMENT, 
+                icon_color=ft.Colors.ORANGE,
+                on_click=lambda e, c=cal: self.ver_comentarios_calificacion(c),
+                tooltip="Ver comentarios"
             )
+            
+            # Si es profesor, también mostrar botón de editar
+            if es_profesor:
+                btn_editar = ft.IconButton(
+                    ft.Icons.EDIT, 
+                    icon_color=ft.Colors.BLUE, 
+                    on_click=lambda e, c=cal: self.mostrar_formulario(c),
+                    tooltip="Editar calificación"
+                )
+                celdas.append(ft.DataCell(ft.Row([btn_editar, btn_comentarios])))
+            else:
+                # Alumnos solo ven el botón de comentarios
+                celdas.append(ft.DataCell(ft.Row([btn_comentarios])))
+            
+            self.data_table.rows.append(ft.DataRow(cells=celdas))
+        self.page.update()
+    
+    def ver_comentarios_calificacion(self, calificacion):
+        """Muestra los comentarios de una calificación y permite agregar nuevos"""
+        user = getattr(self.page, "user_data", None)
+        id_usuario = user.get("ID_usuario") if user else None
+        nombre_usuario = user.get("user") or user.get("nombre") or "Usuario"
+        
+        comentarios = self.comentario_model.obtener_por_calificacion(calificacion['ID_calificacion'])
+        
+        # Crear lista de comentarios
+        comentarios_list = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
+        
+        if comentarios:
+            for comentario in comentarios:
+                comentarios_list.controls.append(
+                    ft.Container(
+                        content=ft.Column([
+                            ft.Row([
+                                ft.Text(comentario.get('usuario', 'Usuario'), weight=ft.FontWeight.BOLD, size=12),
+                                ft.Text("·", size=12),
+                                ft.Text(comentario.get('fecha', ''), size=11, color=ft.Colors.GREY_600),
+                            ]),
+                            ft.Text(comentario.get('comentario', ''), size=13),
+                        ]),
+                        padding=10,
+                        bgcolor=ft.Colors.GREY_50,
+                        border_radius=10,
+                    )
+                )
+        else:
+            comentarios_list.controls.append(
+                ft.Text("No hay comentarios aún", color=ft.Colors.GREY_600, size=14)
+            )
+        
+        # Campo para nuevo comentario
+        comentario_field = ft.TextField(
+            label="Escribe tu comentario",
+            multiline=True,
+            min_lines=2,
+            max_lines=4,
+            width=400,
+            border_radius=10,
+        )
+        
+        mensaje = ft.Text("", color=ft.Colors.RED, size=12)
+        
+        def guardar_comentario(e):
+            if not comentario_field.value or not comentario_field.value.strip():
+                mensaje.value = "El comentario no puede estar vacío"
+                self.page.update()
+                return
+            
+            success, msg = self.comentario_model.crear_comentario_calificacion(
+                calificacion['ID_calificacion'],
+                id_usuario,
+                comentario_field.value.strip()
+            )
+            
+            if success:
+                self.dialog_comentarios.open = False
+                self.cargar_datos()
+                self.page.snack_bar = ft.SnackBar(content=ft.Text("Comentario agregado"), bgcolor=ft.Colors.GREEN)
+                self.page.snack_bar.open = True
+            else:
+                mensaje.value = msg
+            self.page.update()
+        
+        def cancelar(e):
+            self.dialog_comentarios.open = False
+            self.page.update()
+        
+        # Botón de agregar comentario (visible para todos)
+        btn_agregar = ft.ElevatedButton(
+            "💬 Agregar Comentario",
+            on_click=guardar_comentario,
+            bgcolor=ft.Colors.BLUE_700,
+            color=ft.Colors.WHITE,
+        )
+        
+        self.dialog_comentarios = ft.AlertDialog(
+            title=ft.Text(f"Comentarios: {calificacion.get('Materia', '')}"),
+            content=ft.Column([
+                ft.Text(f"Alumno: {self.alumno_nombre}", size=14, weight=ft.FontWeight.BOLD),
+                ft.Divider(),
+                ft.Text("Comentarios:", size=14, weight=ft.FontWeight.BOLD),
+                ft.Container(
+                    content=comentarios_list,
+                    height=200,
+                ),
+                ft.Divider(),
+                comentario_field,
+                mensaje,
+            ], width=450, height=450, spacing=10, scroll=ft.ScrollMode.AUTO),
+            actions=[
+                ft.TextButton("Cerrar", on_click=cancelar),
+                btn_agregar,
+            ],
+        )
+        self.page.overlay.append(self.dialog_comentarios)
+        self.dialog_comentarios.open = True
         self.page.update()
     
     def mostrar_formulario(self, calificacion=None):
+        user = getattr(self.page, "user_data", None)
+        if user.get("tipo") != "profesor":
+            self.page.snack_bar = ft.SnackBar(content=ft.Text("Solo profesores pueden gestionar calificaciones"), bgcolor=ft.Colors.RED)
+            self.page.snack_bar.open = True
+            self.page.update()
+            return
+        
         materia_field = ft.TextField(label="Materia", value=calificacion.get('Materia') if calificacion else "", width=400, border_radius=10)
         unidad1_field = ft.TextField(label="Unidad 1", value=str(calificacion.get('Unidad1', '')) if calificacion and calificacion.get('Unidad1') else "", width=150, hint_text="0-100", border_radius=10)
         unidad2_field = ft.TextField(label="Unidad 2", value=str(calificacion.get('Unidad2', '')) if calificacion and calificacion.get('Unidad2') else "", width=150, hint_text="0-100", border_radius=10)
@@ -211,7 +380,7 @@ class CalificacionesView:
                 materia_field,
                 ft.Row([unidad1_field, unidad2_field, unidad3_field], alignment=ft.MainAxisAlignment.SPACE_AROUND),
                 mensaje,
-            ], width=450, height=250, spacing=10),
+            ], width=450, height=250, spacing=10, scroll=ft.ScrollMode.AUTO),
             actions=[
                 ft.TextButton("Cancelar", on_click=cancelar),
                 ft.ElevatedButton("Guardar", on_click=guardar, bgcolor=ft.Colors.GREEN, color=ft.Colors.WHITE),

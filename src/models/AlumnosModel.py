@@ -47,6 +47,26 @@ class AlumnosModel:
         finally:
             connection.close()
 
+    def obtener_por_usuario(self, id_usuario):
+        """Obtiene un alumno por ID de usuario"""
+        connection = self.db.get_connection()
+        if not connection:
+            return None
+        
+        try:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT ID_alumno, nombre, apellido, no_control
+                FROM alumnos
+                WHERE ID_usuario = %s
+            """, (id_usuario,))
+            return cursor.fetchone()
+        except Exception as e:
+            print(f"Error en obtener_por_usuario: {e}")
+            return None
+        finally:
+            connection.close()
+
     def crear(self, nombre, apellido, no_control, id_usuario):
         """Crea un nuevo alumno"""
         connection = self.db.get_connection()

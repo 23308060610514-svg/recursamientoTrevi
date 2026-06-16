@@ -22,6 +22,16 @@ class AlumnosController:
             print(f"Error en obtener: {e}")
             return None
 
+    def obtener_por_usuario(self, id_usuario):
+        """Obtiene un alumno por ID de usuario"""
+        try:
+            if not id_usuario:
+                return None
+            return self.model.obtener_por_usuario(id_usuario)
+        except Exception as e:
+            print(f"Error en obtener_por_usuario: {e}")
+            return None
+
     def crear(self, nombre, apellido, no_control, id_usuario):
         """Crea un nuevo alumno"""
         try:

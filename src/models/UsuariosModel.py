@@ -141,3 +141,19 @@ class UsuariosModel:
             return "usuario"
         finally:
             connection.close()
+
+    def es_profesor(self, id_usuario):
+        """Verifica si un usuario es profesor"""
+        connection = self.db.get_connection()
+        if not connection:
+            return False
+        
+        try:
+            cursor = connection.cursor()
+            cursor.execute("SELECT ID_profesor FROM profesores WHERE ID_usuario = %s", (id_usuario,))
+            return cursor.fetchone() is not None
+        except Exception as e:
+            print(f"Error en es_profesor: {e}")
+            return False
+        finally:
+            connection.close()

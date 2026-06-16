@@ -35,6 +35,18 @@ def LoginView(page, auth_controller):
         
         if user:
             page.user_data = user
+            # Mostrar mensaje de bienvenida con el rol
+            rol_espanol = {
+                "alumno": "Alumno",
+                "profesor": "Profesor",
+                "admin": "Administrador"
+            }.get(user.get("tipo"), "Usuario")
+            
+            page.snack_bar = ft.SnackBar(
+                content=ft.Text(f"¡Bienvenido {rol_espanol} {user.get('user', '')}!"),
+                bgcolor=ft.Colors.GREEN
+            )
+            page.snack_bar.open = True
             page.go("/dashboard")
         else:
             error_text.value = message
@@ -51,6 +63,7 @@ def LoginView(page, auth_controller):
                 content=ft.Column([
                     ft.Text("📚 Sistema Escolar", size=40, weight=ft.FontWeight.BOLD),
                     ft.Text("Iniciar Sesión", size=24, weight=ft.FontWeight.W_500),
+                    ft.Text("Acceso para alumnos y profesores", size=14, color=ft.Colors.GREY_600),
                     ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
                     email_input,
                     password_input,

@@ -19,7 +19,7 @@ class CalificacionesView:
         for a in alumnos:
             alumnos_list.controls.append(
                 ft.ElevatedButton(
-                    text=f"{a['nombre']} {a['apellido']} - {a['no_control']}",
+                    content=ft.Text(f"{a['nombre']} {a['apellido']} - {a['no_control']}"),
                     on_click=lambda e, alumno_id=a['ID_alumno'], nombre=f"{a['nombre']} {a['apellido']}": self.seleccionar_alumno(alumno_id, nombre),
                     width=400,
                     style=ft.ButtonStyle(
@@ -34,12 +34,12 @@ class CalificacionesView:
         
         self.data_table = ft.DataTable(
             columns=[
-                ft.DataColumn(ft.Text("Materia", weight="bold")),
-                ft.DataColumn(ft.Text("Unidad 1", weight="bold")),
-                ft.DataColumn(ft.Text("Unidad 2", weight="bold")),
-                ft.DataColumn(ft.Text("Unidad 3", weight="bold")),
-                ft.DataColumn(ft.Text("Promedio", weight="bold")),
-                ft.DataColumn(ft.Text("Acciones", weight="bold")),
+                ft.DataColumn(ft.Text("Materia", weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Unidad 1", weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Unidad 2", weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Unidad 3", weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Promedio", weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Acciones", weight=ft.FontWeight.BOLD)),
             ],
             rows=[]
         )
@@ -83,7 +83,7 @@ class CalificacionesView:
                             content=ft.Container(
                                 content=ft.Column([
                                     ft.Row([
-                                        ft.Text("👨‍🎓 Alumno seleccionado:", size=14, weight="bold"),
+                                        ft.Text("👨‍🎓 Alumno seleccionado:", size=14, weight=ft.FontWeight.BOLD),
                                         self.txt_alumno_seleccionado,
                                     ]),
                                     ft.Divider(),
@@ -105,7 +105,7 @@ class CalificacionesView:
                         ft.Text("📊 Calificaciones por Materia", size=18, weight=ft.FontWeight.BOLD),
                         ft.Container(height=10),
                         ft.Container(
-                            content=ft.Row([self.data_table])
+                            content=ft.Column([self.data_table])
                         ),
                     ]),
                     padding=20,
@@ -220,6 +220,3 @@ class CalificacionesView:
         self.page.overlay.append(self.dialog)
         self.dialog.open = True
         self.page.update()
-    
-    def editar_calificacion(self, calificacion):
-        self.mostrar_formulario(calificacion)

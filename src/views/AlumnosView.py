@@ -61,7 +61,6 @@ class AlumnosView:
                         ft.Container(height=10),
                         ft.Container(
                             content=ft.Row([self.data_table], alignment=ft.MainAxisAlignment.CENTER),
-                            scroll=ft.ScrollMode.AUTO,
                         ),
                     ]),
                     padding=20,

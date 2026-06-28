@@ -8,9 +8,13 @@ def DashboardView(page: ft.Page):
         return ft.View(route="/dashboard", controls=[ft.Text("Redirigiendo...")])
     nombre_usuario = user.get('user') or user.get('nombre') or user.get('User') or "Usuario"
     
+# En DashboardView.py o donde tengas el botón de cerrar sesión
     def cerrar_sesion(e):
+    # Limpiar todos los datos de sesión
         page.user_data = None
+        page.clean()  # Limpiar la página
         page.go("/")
+        page.update()
     
     def navigation_change(e):
         index = e.control.selected_index

@@ -66,12 +66,14 @@ class AlumnosView:
         # Obtener solicitudes del alumno
         solicitudes = self.profesor_model.obtener_solicitudes_enviadas(self.alumno_actual['ID_alumno'])
         
+        # Crear tabla de profesores (no de alumnos)
         self.data_table = ft.DataTable(
             columns=[
                 ft.DataColumn(ft.Text("ID")),
                 ft.DataColumn(ft.Text("Nombre")),
                 ft.DataColumn(ft.Text("Apellido")),
-                ft.DataColumn(ft.Text("No. Control")),
+                ft.DataColumn(ft.Text("Especialidad")),
+                ft.DataColumn(ft.Text("Email")),
                 ft.DataColumn(ft.Text("Acciones")),
             ],
             rows=[]
@@ -147,7 +149,7 @@ class AlumnosView:
                             elevation=3,
                         ),
                         ft.Container(height=20),
-                        ft.Text("📋 Lista de Alumnos", size=18, weight=ft.FontWeight.BOLD),
+                        ft.Text("📋 Profesores Disponibles", size=18, weight=ft.FontWeight.BOLD),
                         ft.Container(height=10),
                         ft.Card(
                             content=ft.Container(
@@ -164,6 +166,121 @@ class AlumnosView:
                 )
             ]
         )
+    
+    def cargar_datos(self):
+        """Carga la lista de profesores para que el alumno pueda enviar solicitudes"""
+        # Obtener todos los profesores
+        profesores = self.profesor_model.obtener_todos()
+        self.data_table.rows = []
+        
+        # Obtener solicitudes del alumno
+        solicitudes = self.profesor_model.obtener_solicitudes_enviadas(self.alumno_actual['ID_alumno'])
+        
+        for profesor in profesores:
+            # Verificar si ya tiene solicitud pendiente a este profesor
+            tiene_solicitud_pendiente = any(
+                s['ID_profesor'] == profesor['ID_profesor'] and s['estado'] == 'pendiente' 
+                for s in solicitudes
+            )
+            
+            # Verificar si ya está asignado a este profesor
+            ya_asignado = any(
+                s['ID_profesor'] == profesor['ID_profesor'] and s['estado'] == 'aceptada'
+                for s in solicitudes
+            )
+            
+            acciones = ft.Row([])
+            
+            if ya_asignado:
+                acciones.controls.append(
+                    ft.Text("✅ Asignado", color=ft.Colors.GREEN, size=12, weight=ft.FontWeight.BOLD)
+                )
+            elif tiene_solicitud_pendiente:
+                acciones.controls.append(
+                    ft.Text("⏳ Pendiente", color=ft.Colors.ORANGE, size=12, weight=ft.FontWeight.BOLD)
+                )
+            else:
+                acciones.controls.append(
+                    ft.IconButton(
+                        ft.Icons.SEND,
+                        icon_color=ft.Colors.GREEN,
+                        on_click=lambda e, p=profesor: self.enviar_solicitud_profesor(p),
+                        tooltip="Enviar solicitud a este profesor"
+                    )
+                )
+            
+            self.data_table.rows.append(
+                ft.DataRow(cells=[
+                    ft.DataCell(ft.Text(str(profesor.get('ID_profesor', '')))),
+                    ft.DataCell(ft.Text(profesor.get('nombre', ''))),
+                    ft.DataCell(ft.Text(profesor.get('apellido', ''))),
+                    ft.DataCell(ft.Text(profesor.get('especialidad', 'Sin especialidad'))),
+                    ft.DataCell(ft.Text(profesor.get('Email', ''))),
+                    ft.DataCell(acciones),
+                ])
+            )
+        
+        self.page.update()
+    
+    def enviar_solicitud_profesor(self, profesor):
+        """Envía una solicitud a un profesor específico"""
+        mensaje_field = ft.TextField(
+            label="Mensaje (opcional)",
+            multiline=True,
+            min_lines=2,
+            max_lines=4,
+            width=400,
+            border_radius=10,
+        )
+        
+        mensaje_error = ft.Text("", color=ft.Colors.RED, size=12)
+        
+        def enviar(e):
+            if not mensaje_field.value or not mensaje_field.value.strip():
+                mensaje_error.value = "El mensaje no puede estar vacío"
+                self.page.update()
+                return
+            
+            success, msg = self.profesor_model.crear_solicitud(
+                self.alumno_actual['ID_alumno'],
+                profesor['ID_profesor'],
+                mensaje_field.value.strip()
+            )
+            
+            if success:
+                dialog.open = False
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text(msg),
+                    bgcolor=ft.Colors.GREEN
+                )
+                self.page.snack_bar.open = True
+                self.cargar_datos()
+                # Recargar toda la vista para actualizar solicitudes
+                self.page.go("/alumnos")
+            else:
+                mensaje_error.value = msg
+            self.page.update()
+        
+        def cancelar(e):
+            dialog.open = False
+            self.page.update()
+        
+        dialog = ft.AlertDialog(
+            title=ft.Text(f"Solicitar a {profesor['nombre']} {profesor['apellido']}"),
+            content=ft.Column([
+                ft.Text(f"Especialidad: {profesor.get('especialidad', 'Sin especialidad')}", size=12, color=ft.Colors.GREY_600),
+                ft.Divider(),
+                mensaje_field,
+                mensaje_error,
+            ], width=450, height=200, spacing=10),
+            actions=[
+                ft.TextButton("Cancelar", on_click=cancelar),
+                ft.ElevatedButton("Enviar Solicitud", on_click=enviar, bgcolor=ft.Colors.GREEN, color=ft.Colors.WHITE),
+            ],
+        )
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
     
     def mostrar_formulario_registro(self):
         """Muestra un formulario para registrar al alumno"""
@@ -229,223 +346,4 @@ class AlumnosView:
         )
         self.page.overlay.append(dialog)
         dialog.open = True
-        self.page.update()
-    
-    def cargar_datos(self):
-        alumnos = self.controller.listar()
-        self.data_table.rows = []
-        
-        for alumno in alumnos:
-            # Verificar si el alumno es el actual
-            es_actual = alumno.get('ID_alumno') == self.alumno_actual['ID_alumno'] if self.alumno_actual else False
-            
-            acciones = ft.Row([
-                ft.IconButton(ft.Icons.EDIT, icon_color=ft.Colors.BLUE, 
-                            on_click=lambda e, a=alumno: self.editar_alumno(a)),
-            ])
-            
-            # Si no es el alumno actual, mostrar botón para enviar solicitud
-            if not es_actual:
-                acciones.controls.append(
-                    ft.IconButton(
-                        ft.Icons.SEND,
-                        icon_color=ft.Colors.GREEN,
-                        on_click=lambda e, a=alumno: self.enviar_solicitud(a),
-                        tooltip="Enviar solicitud a profesor"
-                    )
-                )
-            
-            self.data_table.rows.append(
-                ft.DataRow(cells=[
-                    ft.DataCell(ft.Text(str(alumno.get('ID_alumno', '')))),
-                    ft.DataCell(ft.Text(alumno.get('nombre', ''))),
-                    ft.DataCell(ft.Text(alumno.get('apellido', ''))),
-                    ft.DataCell(ft.Text(alumno.get('no_control', ''))),
-                    ft.DataCell(acciones),
-                ])
-            )
-        self.page.update()
-    
-    def enviar_solicitud(self, alumno):
-        """Envía una solicitud a un profesor"""
-        # Obtener profesores disponibles
-        profesores = self.profesor_model.obtener_todos()
-        
-        if not profesores:
-            self.page.snack_bar = ft.SnackBar(
-                content=ft.Text("No hay profesores disponibles"),
-                bgcolor=ft.Colors.RED
-            )
-            self.page.snack_bar.open = True
-            self.page.update()
-            return
-        
-        # Crear dropdown de profesores
-        profesor_dropdown = ft.Dropdown(
-            label="Seleccionar profesor",
-            width=400,
-            options=[
-                ft.dropdown.Option(
-                    str(p['ID_profesor']), 
-                    f"{p['nombre']} {p['apellido']} - {p['especialidad'] or 'Sin especialidad'}"
-                ) for p in profesores
-            ],
-            border_radius=10,
-        )
-        
-        mensaje_field = ft.TextField(
-            label="Mensaje (opcional)",
-            multiline=True,
-            min_lines=2,
-            max_lines=4,
-            width=400,
-            border_radius=10,
-        )
-        
-        mensaje_error = ft.Text("", color=ft.Colors.RED, size=12)
-        
-        def enviar(e):
-            if not profesor_dropdown.value:
-                mensaje_error.value = "Selecciona un profesor"
-                self.page.update()
-                return
-            
-            success, msg = self.profesor_model.crear_solicitud(
-                self.alumno_actual['ID_alumno'],
-                int(profesor_dropdown.value),
-                mensaje_field.value if mensaje_field.value else None
-            )
-            
-            if success:
-                dialog.open = False
-                self.page.snack_bar = ft.SnackBar(
-                    content=ft.Text(msg),
-                    bgcolor=ft.Colors.GREEN
-                )
-                self.page.snack_bar.open = True
-                self.page.update()
-                # Recargar la vista
-                self.page.go("/alumnos")
-            else:
-                mensaje_error.value = msg
-                self.page.update()
-        
-        def cancelar(e):
-            dialog.open = False
-            self.page.update()
-        
-        dialog = ft.AlertDialog(
-            title=ft.Text("Solicitar agregar a profesor"),
-            content=ft.Column([
-                ft.Text(f"Alumno: {self.alumno_actual['nombre']} {self.alumno_actual['apellido']}", weight=ft.FontWeight.BOLD),
-                ft.Divider(),
-                profesor_dropdown,
-                mensaje_field,
-                mensaje_error,
-            ], width=450, height=320, spacing=10, scroll=ft.ScrollMode.AUTO),
-            actions=[
-                ft.TextButton("Cancelar", on_click=cancelar),
-                ft.ElevatedButton("Enviar Solicitud", on_click=enviar, bgcolor=ft.Colors.GREEN, color=ft.Colors.WHITE),
-            ],
-        )
-        self.page.overlay.append(dialog)
-        dialog.open = True
-        self.page.update()
-    
-    def mostrar_formulario(self, alumno=None):
-        """Muestra el formulario para crear/editar alumno"""
-        nombre_field = ft.TextField(label="Nombre", value=alumno.get('nombre') if alumno else "", width=400, border_radius=10)
-        apellido_field = ft.TextField(label="Apellido", value=alumno.get('apellido') if alumno else "", width=400, border_radius=10)
-        control_field = ft.TextField(label="Número de Control", value=alumno.get('no_control') if alumno else "", width=400, border_radius=10)
-        
-        mensaje = ft.Text("", color=ft.Colors.RED, size=12)
-        
-        def guardar(e):
-            if not nombre_field.value or not nombre_field.value.strip():
-                mensaje.value = "El nombre es obligatorio"
-                self.page.update()
-                return
-            
-            if not apellido_field.value or not apellido_field.value.strip():
-                mensaje.value = "El apellido es obligatorio"
-                self.page.update()
-                return
-            
-            if not control_field.value or not control_field.value.strip():
-                mensaje.value = "El número de control es obligatorio"
-                self.page.update()
-                return
-            
-            if alumno:
-                success, msg = self.controller.actualizar(
-                    alumno['ID_alumno'], 
-                    nombre_field.value.strip(), 
-                    apellido_field.value.strip(), 
-                    control_field.value.strip()
-                )
-            else:
-                success, msg = self.controller.crear(
-                    nombre_field.value.strip(), 
-                    apellido_field.value.strip(), 
-                    control_field.value.strip(), 
-                    self.id_usuario
-                )
-            
-            if success:
-                self.dialog.open = False
-                self.cargar_datos()
-                self.page.snack_bar = ft.SnackBar(content=ft.Text(msg), bgcolor=ft.Colors.GREEN)
-                self.page.snack_bar.open = True
-            else:
-                mensaje.value = msg
-            self.page.update()
-        
-        def cancelar(e):
-            self.dialog.open = False
-            self.page.update()
-        
-        self.dialog = ft.AlertDialog(
-            title=ft.Text("Agregar Alumno" if not alumno else "Editar Alumno"),
-            content=ft.Column([
-                nombre_field, 
-                apellido_field, 
-                control_field, 
-                mensaje
-            ], width=450, height=280, spacing=10, scroll=ft.ScrollMode.AUTO),
-            actions=[
-                ft.TextButton("Cancelar", on_click=cancelar),
-                ft.ElevatedButton("Guardar", on_click=guardar, bgcolor=ft.Colors.GREEN, color=ft.Colors.WHITE),
-            ],
-        )
-        self.page.overlay.append(self.dialog)
-        self.dialog.open = True
-        self.page.update()
-    
-    def editar_alumno(self, alumno):
-        self.mostrar_formulario(alumno)
-    
-    def eliminar_alumno(self, alumno):
-        def confirmar(e):
-            success, msg = self.controller.eliminar(alumno['ID_alumno'])
-            confirm_dialog.open = False
-            if success:
-                self.cargar_datos()
-            self.page.snack_bar = ft.SnackBar(content=ft.Text(msg), bgcolor=ft.Colors.GREEN if success else ft.Colors.RED)
-            self.page.snack_bar.open = True
-            self.page.update()
-        
-        def cancelar(e):
-            confirm_dialog.open = False
-            self.page.update()
-        
-        confirm_dialog = ft.AlertDialog(
-            title=ft.Text("Confirmar eliminación"),
-            content=ft.Text(f"¿Eliminar a {alumno['nombre']} {alumno['apellido']}?"),
-            actions=[
-                ft.TextButton("Cancelar", on_click=cancelar),
-                ft.ElevatedButton("Eliminar", on_click=confirmar, bgcolor=ft.Colors.RED, color=ft.Colors.WHITE),
-            ],
-        )
-        self.page.overlay.append(confirm_dialog)
-        confirm_dialog.open = True
         self.page.update()

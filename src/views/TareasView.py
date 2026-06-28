@@ -45,9 +45,9 @@ class TareasView:
                 ft.DataColumn(ft.Text("Título", weight=ft.FontWeight.BOLD)),
                 ft.DataColumn(ft.Text("Descripción", weight=ft.FontWeight.BOLD)),
                 ft.DataColumn(ft.Text("Fecha Entrega", weight=ft.FontWeight.BOLD)),
-                ft.DataColumn(ft.Text("Calificación", weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Calificación",  weight=ft.FontWeight.BOLD)),
                 ft.DataColumn(ft.Text("Comentarios", weight=ft.FontWeight.BOLD)),
-                ft.DataColumn(ft.Text("Acciones", weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Acciones",  weight=ft.FontWeight.BOLD)),
             ],
             rows=[]
         )
@@ -162,56 +162,72 @@ class TareasView:
             self.data_table.rows = []
             self.page.update()
             return
-        
+    
         user = getattr(self.page, "user_data", None)
         tipo_usuario = user.get("tipo") if user else "usuario"
         es_profesor = tipo_usuario == "profesor"
-        
+    
         tareas = self.controller.obtener_por_alumno(self.alumno_actual)
         self.data_table.rows = []
-        
+    
         for tarea in tareas:
             fecha = tarea.get('fecha_entrega', '')
             if fecha:
                 fecha = fecha.strftime("%d/%m/%Y") if hasattr(fecha, 'strftime') else str(fecha)
             else:
                 fecha = "Sin fecha"
-            
+        
             calificacion = tarea.get('calificacion', '')
             calificacion_texto = str(calificacion) if calificacion else "Pendiente"
             calificacion_color = ft.Colors.GREEN if calificacion and calificacion >= 6 else ft.Colors.ORANGE if calificacion else ft.Colors.GREY
-            
-            # Obtener comentarios de la tarea
+        
+        # Obtener comentarios de la tarea
             comentarios = self.comentario_model.obtener_por_trabajo(tarea['ID_trabajo'])
             num_comentarios = len(comentarios)
             comentario_texto = f"💬 {num_comentarios}" if num_comentarios > 0 else "Sin comentarios"
-            
-            # Acciones según el tipo de usuario
+        
+        # ✅ CORREGIDO: Acciones según el tipo de usuario
             acciones = ft.Row([])
-            
+        
             if es_profesor:
-                # Profesor puede editar, calificar y eliminar
+            # Profesor: botones de editar, calificar, eliminar y comentarios
                 acciones.controls.extend([
-                    ft.IconButton(ft.Icons.EDIT, icon_color=ft.Colors.BLUE, 
-                                on_click=lambda e, t=tarea: self.editar_tarea(t)),
-                    ft.IconButton(ft.Icons.GRADE, icon_color=ft.Colors.GREEN,
-                                on_click=lambda e, t=tarea: self.calificar_tarea(t)),
-                    ft.IconButton(ft.Icons.DELETE, icon_color=ft.Colors.RED,
-                                on_click=lambda e, t=tarea: self.eliminar_tarea(t)),
+                    ft.IconButton(
+                        ft.Icons.EDIT, 
+                        icon_color=ft.Colors.BLUE, 
+                        on_click=lambda e, t=tarea: self.editar_tarea(t),
+                        tooltip="Editar tarea"
+                    ),
+                    ft.IconButton(
+                        ft.Icons.GRADE, 
+                        icon_color=ft.Colors.GREEN,
+                        on_click=lambda e, t=tarea: self.calificar_tarea(t),
+                        tooltip="Calificar tarea"
+                    ),
+                    ft.IconButton(
+                        ft.Icons.DELETE, 
+                        icon_color=ft.Colors.RED,
+                        on_click=lambda e, t=tarea: self.eliminar_tarea(t),
+                        tooltip="Eliminar tarea"
+                    ),
+                    ft.IconButton(
+                        ft.Icons.COMMENT, 
+                        icon_color=ft.Colors.ORANGE,
+                        on_click=lambda e, t=tarea: self.ver_comentarios(t),
+                        tooltip="Ver comentarios"
+                    ),
                 ])
             else:
-                # Alumno solo puede ver y comentar
+            # Alumno: SOLO botón de comentarios (UNA VEZ)
                 acciones.controls.append(
-                    ft.IconButton(ft.Icons.COMMENT, icon_color=ft.Colors.ORANGE,
-                                on_click=lambda e, t=tarea: self.ver_comentarios(t))
+                        ft.IconButton(
+                            ft.Icons.COMMENT, 
+                            icon_color=ft.Colors.ORANGE,
+                            on_click=lambda e, t=tarea: self.ver_comentarios(t),
+                            tooltip="Ver comentarios"
                 )
-            
-            # Siempre mostrar botón de comentarios
-            acciones.controls.append(
-                ft.IconButton(ft.Icons.COMMENT, icon_color=ft.Colors.ORANGE,
-                            on_click=lambda e, t=tarea: self.ver_comentarios(t))
             )
-            
+        
             self.data_table.rows.append(
                 ft.DataRow(cells=[
                     ft.DataCell(ft.Text(str(tarea.get('ID_trabajo', '')))),

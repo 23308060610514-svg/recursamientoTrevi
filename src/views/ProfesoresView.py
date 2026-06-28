@@ -12,42 +12,24 @@ class ProfesoresView:
         self.dialog = None
         self.alumno_seleccionado = None
         
-        # Obtener el profesor actual
+        # Obtener el usuario actual
         user = getattr(self.page, "user_data", None)
         self.id_usuario = user.get("ID_usuario") if user else None
+        self.tipo_usuario = user.get("tipo") if user else None
         
         # Intentar obtener el profesor
         self.profesor_actual = None
-        if self.id_usuario:
+        if self.id_usuario and self.tipo_usuario == 'profesor':
             self.profesor_actual = self.model.obtener_por_usuario(self.id_usuario)
-            
-            # Si no existe, intentar crear el profesor automáticamente
-            if not self.profesor_actual:
-                print(f"No se encontró profesor para el usuario {self.id_usuario}. Creando...")
-                # Crear profesor automáticamente
-                nombre = user.get("user") or user.get("nombre") or "Profesor"
-                apellido = user.get("apellido") or ""
-                email = user.get("Email") or user.get("email") or f"profesor{self.id_usuario}@ejemplo.com"
-                password = "temp123"  # Contraseña temporal
-                
-                # Crear el profesor en la base de datos
-                exito = self.model.crear_completo(nombre, apellido, email, password, self.id_usuario)
-                if exito:
-                    # Recargar el profesor
-                    self.profesor_actual = self.model.obtener_por_usuario(self.id_usuario)
-                    print("Profesor creado exitosamente")
-                else:
-                    print("Error al crear profesor automáticamente")
 
     def build(self):
-        # Si no hay profesor actual, mostrar mensaje y botón para crear
+        # Si no hay profesor actual, mostrar mensaje
         if not self.profesor_actual:
-            def crear_profesor(e):
-                # Mostrar diálogo para crear profesor
-                self.mostrar_formulario_creacion()
-            
             def volver_dashboard(e):
                 self.page.go("/dashboard")
+            
+            def registrar_profesor(e):
+                self.mostrar_formulario_creacion()
             
             return ft.View(
                 route="/profesores",
@@ -64,27 +46,35 @@ class ProfesoresView:
                             ft.Container(height=20),
                             ft.ElevatedButton(
                                 "📝 Registrar como Profesor",
-                                on_click=crear_profesor,
+                                on_click=registrar_profesor,
                                 icon=ft.Icons.PERSON_ADD,
                                 bgcolor=ft.Colors.BLUE_700,
                                 color=ft.Colors.WHITE,
                             ),
                             ft.TextButton("Volver al Dashboard", on_click=volver_dashboard),
                         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10),
-                        alignment=ft.alignment.center,
                         expand=True,
                     )
                 ]
             )
         
-        # Obtener datos
+        # Si es profesor y está registrado, mostrar la vista normal
+        return self.build_vista_normal()
+    
+    def build_vista_normal(self):
+        """Construye la vista normal cuando el profesor existe"""
+    
+    # Obtener datos
         alumnos_asignados = self.model.obtener_alumnos_asignados(self.profesor_actual['ID_profesor'])
         alumnos_disponibles = self.model.obtener_alumnos_disponibles(self.profesor_actual['ID_profesor'])
         solicitudes = self.model.obtener_solicitudes_recibidas(self.profesor_actual['ID_profesor'])
-        
-        # Crear lista de alumnos asignados
+    
+    # Obtener especialidad del profesor
+        especialidad_texto = self.profesor_actual.get('especialidad', 'Sin especialidad')
+    
+    # Crear lista de alumnos asignados
         alumnos_asignados_list = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
-        
+    
         if alumnos_asignados:
             for a in alumnos_asignados:
                 alumnos_asignados_list.controls.append(
@@ -101,16 +91,17 @@ class ProfesoresView:
                         padding=10,
                         bgcolor=ft.Colors.GREY_50,
                         border_radius=10,
-                    )
                 )
+                )
+                
         else:
             alumnos_asignados_list.controls.append(
-                ft.Text("No tienes alumnos asignados", color=ft.Colors.GREY_600)
-            )
-        
-        # Crear lista de alumnos disponibles (para asignar)
+            ft.Text("No tienes alumnos asignados", color=ft.Colors.GREY_600)
+        )
+    
+    # Crear lista de alumnos disponibles (para asignar)
         alumnos_disponibles_list = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
-        
+    
         if alumnos_disponibles:
             for a in alumnos_disponibles:
                 alumnos_disponibles_list.controls.append(
@@ -133,10 +124,10 @@ class ProfesoresView:
             alumnos_disponibles_list.controls.append(
                 ft.Text("No hay alumnos disponibles para asignar", color=ft.Colors.GREY_600)
             )
-        
-        # Crear lista de solicitudes
+    
+    # Crear lista de solicitudes
         solicitudes_list = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
-        
+    
         if solicitudes:
             for s in solicitudes:
                 solicitudes_list.controls.append(
@@ -173,6 +164,7 @@ class ProfesoresView:
             solicitudes_list.controls.append(
                 ft.Text("No hay solicitudes pendientes", color=ft.Colors.GREY_600)
             )
+    
         
         def volver_dashboard(e):
             self.page.go("/dashboard")

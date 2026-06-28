@@ -15,7 +15,7 @@ class ProfesoresModel:
         try:
             cursor = connection.cursor(dictionary=True)
             cursor.execute("""
-                SELECT p.ID_profesor, p.nombre, p.apellido, p.Email, p.especialidad,
+                SELECT p.ID_profesor, p.nombre, p.apellido, p.Email,
                     u.user as nombre_usuario
                 FROM profesores p
                 JOIN usuarios u ON p.ID_usuario = u.ID_usuario
@@ -70,49 +70,79 @@ class ProfesoresModel:
             connection.close()
 
     def crear(self, nombre, apellido, email, password, especialidad, id_usuario):
-        """Crea un nuevo profesor"""
+        """
+        Crea un nuevo profesor en la tabla profesores
+        NO inserta en la tabla alumnos
+        """
         connection = self.db.get_connection()
         if not connection:
             return False
-        
+    
         try:
             cursor = connection.cursor()
+        
+        # Hashear la contraseña
             salt = bcrypt.gensalt(rounds=12)
             hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-            
+        
+        # Obtener fecha actual
             fecha_actual = date.today()
-            
+        
+        # INSERTAR SOLO EN LA TABLA PROFESORES
             cursor.execute("""
                 INSERT INTO profesores (nombre, apellido, Email, Password, especialidad, Fecha_Registro, ID_usuario)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (nombre, apellido, email, hashed.decode('utf-8'), especialidad, fecha_actual, id_usuario))
+            """, (
+                nombre, 
+                apellido, 
+                email, 
+                hashed.decode('utf-8'), 
+                especialidad, 
+                fecha_actual, 
+                id_usuario
+            ))
+        
             connection.commit()
             return True
+        
         except Exception as e:
-            print(f"Error en crear: {e}")
+            print(f"Error en crear profesor: {e}")
             return False
         finally:
             connection.close()
 
-    def crear_completo(self, nombre, apellido, email, password, id_usuario):
-        """Crea un nuevo profesor con contraseña ya hasheada"""
+    def crear_completo(self, nombre, apellido, email, password, especialidad, id_usuario):
+        """Crea un nuevo profesor con especialidad opcional"""
         connection = self.db.get_connection()
         if not connection:
             return False
-        
+    
         try:
             cursor = connection.cursor()
+        
+        # Hashear la contraseña
             salt = bcrypt.gensalt(rounds=12)
             hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-            
+        
             fecha_actual = date.today()
-            
+        
+        # 🆕 Insertar con especialidad (puede ser None)
             cursor.execute("""
                 INSERT INTO profesores (nombre, apellido, Email, Password, especialidad, Fecha_Registro, ID_usuario)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (nombre, apellido, email, hashed.decode('utf-8'), None, fecha_actual, id_usuario))
+            """, (
+                nombre, 
+                apellido, 
+                email, 
+                hashed.decode('utf-8'), 
+                especialidad,  # 🆕 Puede ser None
+                fecha_actual, 
+                id_usuario
+            ))
+        
             connection.commit()
             return True
+        
         except Exception as e:
             print(f"Error en crear_completo: {e}")
             return False

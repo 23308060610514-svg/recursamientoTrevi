@@ -70,31 +70,35 @@ class AuthController:
         except Exception as e:
             return False, f"Error en registro completo: {str(e)}"
 
-    def registrar_profesor_completo(self, nombre, apellido, email, password):
+    def registrar_profesor_completo(self, nombre, apellido, email, password, especialidad=None):
+        """Registra un profesor completo con su especialidad"""
         try:
             if self.usuario_model.email_existe(email):
                 return False, "El correo electrónico ya está registrado"
-            
+        
             from models.schemasModel import UsuarioSchema
             usuario_data = UsuarioSchema(nombre=nombre, apellido=apellido, email=email, password=password)
-            
+        
             exito = self.usuario_model.registrar(usuario_data)
             if not exito:
                 return False, "Error al registrar usuario"
-            
+        
             usuario = self.usuario_model.obtener_por_email(email)
             if not usuario:
                 return False, "Error al obtener usuario creado"
-            
+        
             from models.ProfesoresModel import ProfesoresModel
             profesor_model = ProfesoresModel()
-            exito_profesor = profesor_model.crear_completo(nombre, apellido, email, password, usuario["ID_usuario"])
-            
+            # 🆕 Pasar la especialidad
+            exito_profesor = profesor_model.crear_completo(
+                nombre, apellido, email, password, especialidad, usuario["ID_usuario"]
+            )
+        
             if exito_profesor:
                 return True, "Profesor registrado exitosamente"
             else:
                 return False, "Error al registrar profesor"
-                
+            
         except Exception as e:
             return False, f"Error en registro completo: {str(e)}"
 
